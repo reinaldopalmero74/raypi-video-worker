@@ -278,7 +278,7 @@ gen_scene() {
       --offload_model True --convert_model_dtype --t5_cpu \
       --image "$WORK_DIR/input.jpg" \
       --prompt "$prompt" \
-      --frame_num "$frames" ); then
+      --frame_num "$frames" 2>&1 | tee -a "$WORK_DIR/work.log" ); then
     log "scene $idx: generation FAILED"
     return 1
   fi
@@ -320,7 +320,7 @@ lipsync_scene() {
       --video_path "$clip" \
       --audio_path "$wav" \
       --video_out_path "$out" \
-      --inference_steps 20 --guidance_scale 1.5 --seed 1247 ); then
+      --inference_steps 20 --guidance_scale 1.5 --seed 1247 2>&1 | tee -a "$WORK_DIR/work.log" ); then
     valid_video "$out" && { log "scene $idx: lip-sync OK"; return 0; }
   fi
   log "scene $idx: WARNING lip-sync failed — using raw clip"
