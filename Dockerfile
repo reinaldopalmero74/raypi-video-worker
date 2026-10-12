@@ -22,7 +22,10 @@ RUN grep -v -E "^(torch|torchvision)" /opt/LatentSync/requirements.txt \
     && pip install --no-cache-dir -r /tmp/ls-req.txt \
     && grep -v -E "^(torch|torchvision|torchaudio)" /opt/Wan2.2/requirements.txt > /tmp/wan-req.txt \
     && pip install --no-cache-dir -r /tmp/wan-req.txt \
-    && pip install --no-cache-dir peft flash-attn \
+    && pip install --no-cache-dir peft \
+    && curl -sL -o /tmp/flash_attn.whl "https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3/flash_attn-2.8.3%2Bcu12torch2.9cxx11abiTRUE-cp312-cp312-linux_x86_64.whl" \
+    && pip install --no-cache-dir /tmp/flash_attn.whl \
+    && rm /tmp/flash_attn.whl \
     && rm -rf /root/.cache/pip
 
 # Worker
