@@ -22,6 +22,7 @@ RUN grep -v -E "^(torch|torchvision)" /opt/LatentSync/requirements.txt \
     && pip install --no-cache-dir -r /tmp/ls-req.txt \
     && grep -v -E "^(torch|torchvision|torchaudio|flash_attn|dashscope)" /opt/Wan2.2/requirements.txt > /tmp/wan-req.txt \
     && pip install --no-cache-dir -r /tmp/wan-req.txt \
+    && pip install --no-cache-dir peft \
     && rm -rf /root/.cache/pip
 
 # Worker
