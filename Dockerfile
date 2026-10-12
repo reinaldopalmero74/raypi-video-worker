@@ -16,12 +16,15 @@ RUN pip install -q "huggingface_hub[cli]" hf_transfer
 RUN git clone --depth 1 https://github.com/Wan-Video/Wan2.2 /opt/Wan2.2 \
     && git clone --depth 1 https://github.com/bytedance/LatentSync /opt/LatentSync
 
+# Fijar torch a la versión de la imagen base (evita que pip lo actualice a 2.14.1)
+RUN printf 'torch==2.9.1\ntorchvision==0.24.1\ntorchaudio==2.9.1\n' > /tmp/constraints.txt
+
 # Dependencias Python (con fix: mediapipe 0.10.11 ya no existe en PyPI)
 RUN grep -v -E "^(torch|torchvision)" /opt/LatentSync/requirements.txt \
       | sed 's/mediapipe==0.10.11/mediapipe==0.10.13/' > /tmp/ls-req.txt \
-    && pip install --no-cache-dir -r /tmp/ls-req.txt \
-    && grep -v -E "^(torch|torchvision|torchaudio)" /opt/Wan2.2/requirements.txt > /tmp/wan-req.txt \
-    && pip install --no-cache-dir -r /tmp/wan-req.txt \
+    && pip install --no-cache-dir --constraint /tmp/constraints.txt -r /tmp/ls-req.txt \
+    && grep -v -E "^(torch|torchvision|torchaudio|flash_attn)" /opt/Wan2.2/requirements.txt > /tmp/wan-req.txt \
+    && pip install --no-cache-dir --constraint /tmp/constraints.txt -r /tmp/wan-req.txt \
     && pip install --no-cache-dir peft \
     && curl -sL -o /tmp/flash_attn.whl "https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3/flash_attn-2.8.3%2Bcu12torch2.9cxx11abiTRUE-cp312-cp312-linux_x86_64.whl" \
     && pip install --no-cache-dir /tmp/flash_attn.whl \
