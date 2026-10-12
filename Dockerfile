@@ -20,7 +20,7 @@ RUN git clone --depth 1 https://github.com/Wan-Video/Wan2.2 /opt/Wan2.2 \
 RUN grep -v -E "^(torch|torchvision)" /opt/LatentSync/requirements.txt \
       | sed 's/mediapipe==0.10.11/mediapipe==0.10.13/' > /tmp/ls-req.txt \
     && pip install --no-cache-dir -r /tmp/ls-req.txt \
-    && grep -v -E "^(torch|torchvision|torchaudio|flash_attn|dashscope)" /opt/Wan2.2/requirements.txt > /tmp/wan-req.txt \
+    && grep -v -E "^(torch|torchvision|torchaudio|flash_attn)" /opt/Wan2.2/requirements.txt > /tmp/wan-req.txt \
     && pip install --no-cache-dir -r /tmp/wan-req.txt \
     && pip install --no-cache-dir peft \
     && rm -rf /root/.cache/pip
