@@ -177,8 +177,22 @@ check_models() {
 }
 
 # ---------------------------------------------------------------- inputs --
-dl() { # dl URL DEST — download with retries
-  curl -sSL --retry 3 --retry-all-errors --retry-delay 5 --max-time 600 -o "$2" "$1"
+dl() { # dl URL DEST — download with retries (resolves tmpfiles pages)
+  local url="$1" dest="$2"
+  # tmpfiles.org: los tokens /dl/ expiran en minutos. Si nos pasan la página
+  # (https://tmpfiles.org/<id>/<file>), extraemos el link directo AHORA.
+  if echo "$url" | grep -q "tmpfiles.org/" && ! echo "$url" | grep -q "/dl/"; then
+    log "Resolviendo link directo de tmpfiles..."
+    local direct
+    direct=$(curl -sL -A "Mozilla/5.0" --max-time 30 "$url" | grep -o 'https://tmpfiles.org/dl/[^"]*' | head -1)
+    if [ -n "$direct" ]; then
+      log "Link directo obtenido."
+      url="$direct"
+    else
+      log "WARN: no se pudo resolver link directo, usando URL original."
+    fi
+  fi
+  curl -sSL --retry 3 --retry-all-errors --retry-delay 5 --max-time 600 -o "$dest" "$url"
 }
 
 log "=== RAY PI 3.14 video job $JOB_ID starting ==="
