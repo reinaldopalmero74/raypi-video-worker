@@ -179,22 +179,34 @@ check_models() {
 }
 
 # ---------------------------------------------------------------- inputs --
-dl() { # dl URL DEST — download with retries (resolves tmpfiles pages)
+dl() { # dl URL DEST — descarga con reintentos; re-resuelve tmpfiles en cada intento
   local url="$1" dest="$2"
-  # tmpfiles.org: los tokens /dl/ expiran en minutos. Si nos pasan la página
-  # (https://tmpfiles.org/<id>/<file>), extraemos el link directo AHORA.
-  if echo "$url" | grep -q "tmpfiles.org/" && ! echo "$url" | grep -q "/dl/"; then
-    log "Resolviendo link directo de tmpfiles..."
-    local direct
-    direct=$(curl -sL -A "Mozilla/5.0" --max-time 30 "$url" | grep -o 'https://tmpfiles.org/dl/[^"]*' | head -1)
-    if [ -n "$direct" ]; then
-      log "Link directo obtenido."
-      url="$direct"
-    else
-      log "WARN: no se pudo resolver link directo, usando URL original."
+  local is_tmpfiles=0
+  echo "$url" | grep -q "tmpfiles.org/" && ! echo "$url" | grep -q "/dl/" && is_tmpfiles=1
+  local attempt=1
+  while [ $attempt -le 4 ]; do
+    local u="$url"
+    if [ "$is_tmpfiles" = "1" ]; then
+      # Los tokens /dl/ de tmpfiles caducan en minutos y son de un solo uso:
+      # se obtiene un link fresco en CADA intento.
+      local direct
+      direct=$(curl -sL -A "Mozilla/5.0" --max-time 30 "$url" | grep -o 'https://tmpfiles.org/dl/[^"]*' | head -1)
+      if [ -n "$direct" ]; then u="$direct"; log "Link directo fresco (intento $attempt)."; fi
     fi
-  fi
-  curl -sSL --retry 3 --retry-all-errors --retry-delay 5 --max-time 600 -o "$dest" "$url"
+    if curl -sSL --max-time 300 -o "$dest" "$u" 2>/dev/null && [ -s "$dest" ]; then
+      # Si lo descargado es una página HTML, es un enlace muerto: reintentar.
+      if head -c 15 "$dest" | grep -qi "<!DOCTYPE\|<html"; then
+        log "WARN: descarga devolvió HTML (enlace caducado), reintentando..."
+      else
+        return 0
+      fi
+    else
+      log "WARN: descarga falló (intento $attempt), reintentando..."
+    fi
+    attempt=$((attempt+1))
+    sleep 5
+  done
+  return 1
 }
 
 log "=== RAY PI 3.14 video job $JOB_ID starting ==="
