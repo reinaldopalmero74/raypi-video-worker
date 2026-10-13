@@ -25,6 +25,8 @@
 #   RUNPOD_POD_ID, RUNPOD_API_KEY (pod-scoped; used only for self-terminate)
 
 set -euo pipefail
+# Evita la fragmentación de VRAM que causaba OOM en el decode VAE de Wan2.2.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
 # ---------------------------------------------------------------- config ---
 : "${SONG_URL:?SONG_URL env var is required}"
@@ -313,6 +315,9 @@ lipsync_scene() {
   if [ "$LIPSYNC" != "true" ]; then return 0; fi
   if valid_video "$out"; then log "scene $idx: lipsync cached, skipping"; return 0; fi
   log "scene $idx: lip-syncing with LatentSync ..."
+  # LatentSync busca whisper en la ruta relativa checkpoints/whisper/tiny.pt
+  # desde su propio dir; enlazamos los checkpoints descargados ahí.
+  ln -sfn "$MODELS_DIR/latentsync/checkpoints" "$LATENTSYNC_DIR/checkpoints" 2>/dev/null || true
   # NOTE: config path (stage2.yaml) is for LatentSync 1.6 — VERIFY on first run.
   if ( cd "$LATENTSYNC_DIR" && python3 -m scripts.inference \
       --unet_config_path "configs/unet/stage2.yaml" \
@@ -339,7 +344,7 @@ normalize_scene() {
     -pix_fmt yuv420p -c:a aac "$out"
 }
 
-upload_file() { # upload_file FILE — prints URL; tries catbox -> litterbox -> uguu
+upload_file() { # upload_file FILE — prints URL; tries catbox -> litterbox -> uguu -> tmpfiles
   local file="$1" url=""
   log "Uploading $(du -h "$file" | cut -f1) to catbox.moe ..."
   url="$(curl -s -m 180 -F "reqtype=fileupload" -F "fileToUpload=@$file" \
@@ -352,6 +357,10 @@ upload_file() { # upload_file FILE — prints URL; tries catbox -> litterbox -> 
   log "litterbox failed, trying uguu.se ..."
   url="$(curl -s -m 240 -F "files[]=@$file" https://uguu.se/upload || true)"
   if [[ "$url" == https://* ]]; then echo "$url"; return 0; fi
+  log "uguu failed, trying tmpfiles.org ..."
+  url="$(curl -s -m 240 -F "file=@$file" https://tmpfiles.org/api/v1/upload 2>/dev/null \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['url'])" 2>/dev/null || true)"
+  if [[ "$url" == https://tmpfiles.org/* ]]; then echo "$url"; return 0; fi
   return 1
 }
 
