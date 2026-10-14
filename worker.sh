@@ -181,6 +181,12 @@ check_models() {
 # ---------------------------------------------------------------- inputs --
 dl() { # dl URL DEST — descarga con reintentos; re-resuelve tmpfiles en cada intento
   local url="$1" dest="$2"
+  # Un /dl/ SIN token numérico (tmpfiles.org/dl/<id>/<file>) no es link directo:
+  # es la página con /dl/ insertado. Se revierte a URL de página para resolverlo.
+  if echo "$url" | grep -q "tmpfiles.org/dl/" && ! echo "$url" | grep -qE "tmpfiles.org/dl/[0-9]+\.[a-zA-Z0-9]+/"; then
+    url="$(echo "$url" | sed 's|tmpfiles.org/dl/|tmpfiles.org/|')"
+    log "URL /dl/ sin token convertida a página de tmpfiles."
+  fi
   local is_tmpfiles=0
   echo "$url" | grep -q "tmpfiles.org/" && ! echo "$url" | grep -q "/dl/" && is_tmpfiles=1
   local attempt=1
